@@ -25,13 +25,7 @@ pub(crate) fn create_config_summary_entries(config: &Config) -> Vec<(&'static st
         ("workdir", config.cwd.display().to_string()),
         ("model", config.model.clone()),
         ("provider", config.model_provider_id.clone()),
-        (
-            "approval",
-            serde_json::to_string(&config.approval_policy)
-                .unwrap_or_else(|_| format!("{:?}", config.approval_policy))
-                .trim_matches('"')
-                .to_string(),
-        ),
+        ("approval", config.approval_policy.to_string()),
         ("sandbox", summarize_sandbox_policy(&config.sandbox_policy)),
     ];
     if config.model_provider.wire_api == WireApi::Responses
