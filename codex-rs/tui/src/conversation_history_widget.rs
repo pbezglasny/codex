@@ -4,6 +4,7 @@ use crate::history_cell::HistoryCell;
 use crate::history_cell::PatchEventType;
 use codex_core::config::Config;
 use codex_core::protocol::FileChange;
+use codex_core::protocol::PatchSessionConfigType;
 use codex_core::protocol::SessionConfiguredEvent;
 use ratatui::prelude::*;
 use ratatui::style::Style;
@@ -250,6 +251,13 @@ impl ConversationHistoryWidget {
                 }
             }
         }
+    }
+
+    pub(crate) fn record_session_config_patch_event(
+        &mut self,
+        patch_event: PatchSessionConfigType,
+    ) {
+        self.add_to_history(HistoryCell::session_config_patched(patch_event))
     }
 }
 

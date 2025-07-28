@@ -121,6 +121,12 @@ pub enum Op {
 
     /// Request to shut down codex instance.
     Shutdown,
+
+    /// Request to change the approval policy for the current session.
+    ChangeApprovalPolicy {
+        /// The new approval policy to use.
+        approval_policy: AskForApproval,
+    },
 }
 
 /// Determines the conditions under which the user is consulted to approve
@@ -337,6 +343,9 @@ pub enum EventMsg {
 
     /// Notification that the agent is shutting down.
     ShutdownComplete,
+
+    /// Notification that codex session configuration has changed.
+    SessionConfigPatchedEvent(SessionConfigPatchedEvent),
 }
 
 // Individual event payload types matching each `EventMsg` variant.
@@ -579,6 +588,19 @@ pub struct Chunk {
     pub orig_index: u32,
     pub deleted_lines: Vec<String>,
     pub inserted_lines: Vec<String>,
+}
+
+/// Type of session patch that can be applied to the current session.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum PatchSessionConfigType {
+    AskForApprovalPatch { new_approval_policy: AskForApproval },
+}
+
+/// Event when codex session configuration is changed.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SessionConfigPatchedEvent {
+    pub session_id: Uuid,
+    pub patch_config_event_type: PatchSessionConfigType,
 }
 
 #[cfg(test)]

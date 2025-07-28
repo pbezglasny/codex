@@ -14,6 +14,7 @@ use codex_core::protocol::McpToolCallBeginEvent;
 use codex_core::protocol::McpToolCallEndEvent;
 use codex_core::protocol::PatchApplyBeginEvent;
 use codex_core::protocol::PatchApplyEndEvent;
+use codex_core::protocol::PatchSessionConfigType;
 use codex_core::protocol::SessionConfiguredEvent;
 use codex_core::protocol::TaskCompleteEvent;
 use codex_core::protocol::TokenUsage;
@@ -517,6 +518,23 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                 // Currently ignored in exec output.
             }
             EventMsg::ShutdownComplete => return CodexStatus::Shutdown,
+            EventMsg::SessionConfigPatchedEvent(session_config_patch_event) => {
+                match session_config_patch_event.patch_config_event_type {
+                    PatchSessionConfigType::AskForApprovalPatch {
+                        new_approval_policy,
+                    } => {
+                        ts_println!(
+                            self,
+                            "{}: {}",
+                            "session approval policy changed",
+                            new_approval_policy
+                                .to_string()
+                                .style(self.bold)
+                                .style(self.green),
+                        );
+                    }
+                }
+            }
         }
         CodexStatus::Running
     }

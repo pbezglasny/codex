@@ -14,6 +14,7 @@ pub enum SlashCommand {
     // more frequently used commands should be listed first.
     New,
     Diff,
+    Approval,
     Quit,
 }
 
@@ -26,6 +27,7 @@ impl SlashCommand {
             SlashCommand::Diff => {
                 "Show git diff of the working directory (including untracked files)"
             }
+            SlashCommand::Approval => "Open approval mode selection panel",
         }
     }
 

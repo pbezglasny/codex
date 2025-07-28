@@ -9,6 +9,7 @@ use codex_core::protocol::AgentMessageEvent;
 use codex_core::protocol::AgentReasoningDeltaEvent;
 use codex_core::protocol::AgentReasoningEvent;
 use codex_core::protocol::ApplyPatchApprovalRequestEvent;
+use codex_core::protocol::AskForApproval;
 use codex_core::protocol::ErrorEvent;
 use codex_core::protocol::Event;
 use codex_core::protocol::EventMsg;
@@ -20,8 +21,10 @@ use codex_core::protocol::McpToolCallBeginEvent;
 use codex_core::protocol::McpToolCallEndEvent;
 use codex_core::protocol::Op;
 use codex_core::protocol::PatchApplyBeginEvent;
+use codex_core::protocol::PatchSessionConfigType;
 use codex_core::protocol::TaskCompleteEvent;
 use codex_core::protocol::TokenUsage;
+use codex_file_search::FileMatch;
 use crossterm::event::KeyEvent;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -40,7 +43,10 @@ use crate::conversation_history_widget::ConversationHistoryWidget;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::history_cell::PatchEventType;
 use crate::user_approval_widget::ApprovalRequest;
-use codex_file_search::FileMatch;
+
+struct SessionConfiguration {
+    approval_policy: AskForApproval,
+}
 
 pub(crate) struct ChatWidget<'a> {
     app_event_tx: AppEventSender,
@@ -55,6 +61,9 @@ pub(crate) struct ChatWidget<'a> {
     // We wait for the final AgentMessage event and then emit the full text
     // at once into scrollback so the history contains a single message.
     answer_buffer: String,
+    /// store configuration for the current session
+    /// this is used to display the session information in the conversation history
+    session_config: SessionConfiguration,
 }
 
 struct UserMessage {
@@ -123,7 +132,9 @@ impl ChatWidget<'_> {
                 app_event_tx_clone.send(AppEvent::CodexEvent(event));
             }
         });
-
+        let session_config = SessionConfiguration {
+            approval_policy: config.approval_policy,
+        };
         Self {
             app_event_tx: app_event_tx.clone(),
             codex_op_tx,
@@ -140,6 +151,7 @@ impl ChatWidget<'_> {
             token_usage: TokenUsage::default(),
             reasoning_buffer: String::new(),
             answer_buffer: String::new(),
+            session_config,
         }
     }
 
@@ -425,6 +437,19 @@ impl ChatWidget<'_> {
             EventMsg::ShutdownComplete => {
                 self.app_event_tx.send(AppEvent::ExitRequest);
             }
+            EventMsg::SessionConfigPatchedEvent(config_patch) => {
+                match config_patch.patch_config_event_type {
+                    PatchSessionConfigType::AskForApprovalPatch {
+                        new_approval_policy,
+                    } => {
+                        self.session_config.approval_policy = new_approval_policy;
+                    }
+                }
+                self.conversation_history
+                    .record_session_config_patch_event(config_patch.patch_config_event_type);
+                self.emit_last_history_entry();
+                self.request_redraw()
+            }
             event => {
                 self.conversation_history
                     .add_background_event(format!("{event:?}"));
@@ -448,6 +473,12 @@ impl ChatWidget<'_> {
         self.conversation_history
             .add_diff_output(diff_output.clone());
         self.emit_last_history_entry();
+        self.request_redraw();
+    }
+
+    pub(crate) fn show_approval_policy_selection(&mut self) {
+        self.bottom_pane
+            .open_change_approval_policy_modal(self.session_config.approval_policy);
         self.request_redraw();
     }
 
